@@ -59,7 +59,7 @@ job "nomad-exporter" {
 
       resources {
         cpu    = 50
-        memory = 50
+        memory = 200
 
         network {
           mbits = 10
