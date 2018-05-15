@@ -60,7 +60,7 @@ def get_allocs(options):
                 taskname=task,
                 alloc_id=alloc_id,
                 eval_id=eval_id,
-            ).set(task['Restarts'])
+            ).set(alloc['TaskStates'][task]['Restarts'])
     return generate_latest(core.REGISTRY)
 
 
