@@ -49,8 +49,6 @@ def retryer(f):
 def get_allocs(options):
     n = nomad.Nomad(host=options['nomad_server'], port=options['nomad_port'])
     for alloc in n.allocations:
-        if not alloc['DesiredStatus'] == 'run':
-            continue
         jobname = alloc['JobID']
         groupname = alloc['TaskGroup']
         alloc_id = alloc['ID']
@@ -62,7 +60,7 @@ def get_allocs(options):
                 taskname=task,
                 alloc_id=alloc_id,
                 eval_id=eval_id,
-            )
+            ).set(task['Restarts'])
     return generate_latest(core.REGISTRY)
 
 
