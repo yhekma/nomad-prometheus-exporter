@@ -63,7 +63,7 @@ job "nomad-exporter" {
 
         network {
           mbits = 10
-          port = "nomad_exporter_port" { }
+          port "nomad_exporter_port" { }
           }
         }
       }
