@@ -31,11 +31,11 @@ job "nomad-exporter" {
           password = "[[.docker_password]]"
         }
 
-        env {
-          PORT = "${NOMAD_PORT_nomad_exporter_port}"
-        }
-
         network_mode = "host"
+      }
+
+      env {
+        PORT = "${NOMAD_PORT_nomad_exporter_port}"
       }
 
       service {
@@ -64,7 +64,6 @@ job "nomad-exporter" {
         network {
           mbits = 10
           port "nomad_exporter_port" { }
-          }
         }
       }
     }
