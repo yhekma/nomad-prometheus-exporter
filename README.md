@@ -9,3 +9,7 @@ uses environment variables to get its config:
 Exposes allocations on `/metrics`
 
 See the example nomad file.
+
+For example, if you want to see which allocs restarted in the last 5 minutes:
+
+```sum(delta(nomad_allocation_restarts[5m])) by (jobname, taskname) > 0```
