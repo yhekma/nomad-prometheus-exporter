@@ -8,7 +8,9 @@ from time import sleep
 from prometheus_client import core, generate_latest, Gauge
 
 
-allocation_restarts_gauge = Gauge('allocation_restarts', 'Number of restarts for given allocation', ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'])
+allocation_restarts_gauge = Gauge('nomad_allocation_restarts', 'Number of restarts for given allocation',
+                                  ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'],
+                                  )
 
 
 class ExportRequestHandler(BaseHTTPRequestHandler):
