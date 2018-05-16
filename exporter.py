@@ -11,6 +11,7 @@ allocation_restarts_gauge = Gauge('nomad_allocation_restarts', 'Number of restar
                                   ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'],
                                   )
 deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['jobname', 'jobid', 'jobversion', 'status'])
+jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['jobname', 'jobtype', 'jobstatus'])
 
 
 class ExportRequestHandler(BaseHTTPRequestHandler):
@@ -19,18 +20,32 @@ class ExportRequestHandler(BaseHTTPRequestHandler):
             nomad_server = os.environ.get('NOMAD_SERVER', 'nomad.service.consul')
             nomad_port = os.environ.get('NOMAD_PORT', 4646)
             n = nomad.Nomad(host=nomad_server, port=nomad_port)
-            alloc_stats = get_allocs(n)
-            deployment_stats = get_deployments(n)
+            get_allocs(n)
+            get_deployments(n)
+            get_tasks(n)
+            stats = generate_latest(core.REGISTRY)
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            self.wfile.write(alloc_stats)
-            self.wfile.write(deployment_stats)
+            self.wfile.write(stats)
 
 
 def start_server(port):
     httpd = HTTPServer(('', port), ExportRequestHandler)
     httpd.serve_forever()
+
+
+def get_tasks(nomad_connection):
+    for job in nomad_connection.jobs:
+        jobname = job['Name']
+        jobtype = job['Type']
+        for taskgroup in job['JobSummary']['Summary']:
+            for status in job['JobSummary']['Summary'][taskgroup]:
+                jobs_gauge.labels(
+                    jobname=jobname,
+                    jobtype=jobtype,
+                    jobstatus=status,
+                ).set(job['JobSummary']['Summary'][taskgroup][status])
 
 
 def get_deployments(nomad_connection):
@@ -50,7 +65,6 @@ def get_deployments(nomad_connection):
             jobversion=deployment['JobVersion'],
             status=deployment['Status'],
         ).set(count_dict[deployment['JobID']])
-    return generate_latest(core.REGISTRY)
 
 
 def get_allocs(nomad_connection):
@@ -67,7 +81,6 @@ def get_allocs(nomad_connection):
                 alloc_id=alloc_id,
                 eval_id=eval_id,
             ).set(alloc['TaskStates'][task]['Restarts'])
-    return generate_latest(core.REGISTRY)
 
 
 if __name__ == '__main__':
