@@ -35,14 +35,15 @@ def start_server(port):
 
 def get_deployments(nomad_connection):
     count_dict = {}
-    for deployment in nomad_connection.deployments:
+    deployments = list(nomad_connection.deployments)
+    for deployment in deployments:
         jobname = deployment['JobID']
         try:
             count_dict[jobname] += 1
         except KeyError:
             count_dict[jobname] = 1
 
-    for deployment in nomad_connection.deployments:
+    for deployment in deployments:
         deployments_gauge.labels(
             jobname=deployment['JobID'],
             jobid=deployment['ID'],
