@@ -4,31 +4,28 @@ import nomad
 import sys
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from time import sleep
 from prometheus_client import core, generate_latest, Gauge
 
 
 allocation_restarts_gauge = Gauge('nomad_allocation_restarts', 'Number of restarts for given allocation',
                                   ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'],
                                   )
+deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['jobname', 'jobid', 'jobversion', 'status'])
 
 
 class ExportRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        options = {
-            'nomad_server': os.environ.get('NOMAD_SERVER', 'nomad.service.consul'),
-            'nomad_port': os.environ.get('NOMAD_PORT', 4646),
-        }
         if self.path == '/metrics':
-            stats = get_allocs(options)
-            if stats:
-                self.send_response(200)
-                self.send_header('Content-type', 'text/html')
-                self.end_headers()
-                self.wfile.write(stats)
-            else:
-                self.send_error(500, "Could not retrieve data")
-                print('Could not retrieve data', file=sys.stderr)
+            nomad_server = os.environ.get('NOMAD_SERVER', 'nomad.service.consul')
+            nomad_port = os.environ.get('NOMAD_PORT', 4646)
+            n = nomad.Nomad(host=nomad_server, port=nomad_port)
+            alloc_stats = get_allocs(n)
+            deployment_stats = get_deployments(n)
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(alloc_stats)
+            self.wfile.write(deployment_stats)
 
 
 def start_server(port):
@@ -36,21 +33,27 @@ def start_server(port):
     httpd.serve_forever()
 
 
-def retryer(f):
-    def wrapper(*args, **kwargs):
-        for __ in range(5):
-            try:
-                return f(*args, **kwargs)
-            except KeyError:
-                sleep(0.5)
-                print('Could not contact nomad, retrying in 0.5 seconds', file=sys.stderr)
-    return wrapper
+def get_deployments(nomad_connection):
+    count_dict = {}
+    for deployment in nomad_connection.deployments:
+        jobname = deployment['JobID']
+        try:
+            count_dict[jobname] += 1
+        except KeyError:
+            count_dict[jobname] = 0
+
+    for deployment in nomad_connection.deployments:
+        deployments_gauge.labels(
+            jobname=deployment['JobID'],
+            jobid=deployment['ID'],
+            jobversion=deployment['JobVersion'],
+            status=deployment['Status'],
+        ).set(count_dict[deployment['JobID']])
+    return generate_latest(core.REGISTRY)
 
 
-@retryer
-def get_allocs(options):
-    n = nomad.Nomad(host=options['nomad_server'], port=options['nomad_port'])
-    for alloc in n.allocations:
+def get_allocs(nomad_connection):
+    for alloc in nomad_connection.allocations:
         jobname = alloc['JobID']
         groupname = alloc['TaskGroup']
         alloc_id = alloc['ID']
