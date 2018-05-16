@@ -40,7 +40,7 @@ def get_deployments(nomad_connection):
         try:
             count_dict[jobname] += 1
         except KeyError:
-            count_dict[jobname] = 0
+            count_dict[jobname] = 1
 
     for deployment in nomad_connection.deployments:
         deployments_gauge.labels(
