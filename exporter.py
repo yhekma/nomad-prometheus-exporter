@@ -22,7 +22,7 @@ class ExportRequestHandler(BaseHTTPRequestHandler):
             n = nomad.Nomad(host=nomad_server, port=nomad_port)
             get_allocs(n)
             get_deployments(n)
-            get_tasks(n)
+            get_jobs(n)
             stats = generate_latest(core.REGISTRY)
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
@@ -35,7 +35,7 @@ def start_server(port):
     httpd.serve_forever()
 
 
-def get_tasks(nomad_connection):
+def get_jobs(nomad_connection):
     for job in nomad_connection.jobs:
         jobname = job['Name']
         jobtype = job['Type']
@@ -73,14 +73,14 @@ def get_allocs(nomad_connection):
         groupname = alloc['TaskGroup']
         alloc_id = alloc['ID']
         eval_id = alloc['EvalID']
-        for task in alloc['TaskStates']:
+        for taskstate in alloc['TaskStates']:
             allocation_restarts_gauge.labels(
                 jobname=jobname,
                 groupname=groupname,
-                taskname=task,
+                taskname=taskstate,
                 alloc_id=alloc_id,
                 eval_id=eval_id,
-            ).set(alloc['TaskStates'][task]['Restarts'])
+            ).set(alloc['TaskStates'][taskstate]['Restarts'])
 
 
 if __name__ == '__main__':
