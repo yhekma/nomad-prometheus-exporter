@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import nomad
-import sys
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from prometheus_client import core, generate_latest, Gauge
@@ -30,7 +29,7 @@ class ExportRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(stats)
 
 
-def start_server(port):
+def start_server(port=os.environ.get('PORT', 8888)):
     httpd = HTTPServer(('', port), ExportRequestHandler)
     httpd.serve_forever()
 
@@ -84,5 +83,4 @@ def get_allocs(nomad_connection):
 
 
 if __name__ == '__main__':
-    port = int(os.environ['PORT'])
-    start_server(port)
+    start_server()
