@@ -7,7 +7,7 @@ from prometheus_client import core, generate_latest, Gauge
 
 
 allocation_restarts_gauge = Gauge('nomad_allocation_restarts', 'Number of restarts for given allocation',
-                                  ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'],
+                                  ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id', 'failed'],
                                   )
 deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['jobname', 'jobid', 'jobversion', 'status'])
 jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['jobname', 'jobtype', 'jobstatus'])
@@ -30,7 +30,7 @@ class ExportRequestHandler(BaseHTTPRequestHandler):
 
 
 def start_server(port=os.environ.get('PORT', 8888)):
-    httpd = HTTPServer(('', port), ExportRequestHandler)
+    httpd = HTTPServer(('', int(port)), ExportRequestHandler)
     httpd.serve_forever()
 
 
@@ -72,14 +72,15 @@ def get_allocs(nomad_connection):
         groupname = alloc['TaskGroup']
         alloc_id = alloc['ID']
         eval_id = alloc['EvalID']
-        for taskstate in alloc['TaskStates']:
+        for task in alloc['TaskStates']:
             allocation_restarts_gauge.labels(
                 jobname=jobname,
                 groupname=groupname,
-                taskname=taskstate,
+                taskname=task,
                 alloc_id=alloc_id,
                 eval_id=eval_id,
-            ).set(alloc['TaskStates'][taskstate]['Restarts'])
+                failed=alloc['TaskStates'][task]['Failed'],
+            ).set(alloc['TaskStates'][task]['Restarts'])
 
 
 if __name__ == '__main__':
