@@ -10,7 +10,7 @@ allocation_restarts_gauge = Gauge('nomad_allocation_restarts', 'Number of restar
                                   ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id', 'failed'],
                                   )
 deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['jobname', 'jobid', 'jobversion', 'status'])
-jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['jobname', 'jobtype', 'jobstatus'])
+jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['jobname', 'jobtype', 'jobstatus', 'taskgroup'])
 
 
 class ExportRequestHandler(BaseHTTPRequestHandler):
@@ -44,6 +44,7 @@ def get_jobs(nomad_connection):
                     jobname=jobname,
                     jobtype=jobtype,
                     jobstatus=status,
+                    taskgroup=taskgroup,
                 ).set(job['JobSummary']['Summary'][taskgroup][status])
 
 
