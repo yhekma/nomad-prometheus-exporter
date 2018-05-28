@@ -2,10 +2,11 @@
 
 import nomad
 import os
+from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from prometheus_client import core, generate_latest, Gauge, Counter
+from prometheus_client import core, generate_latest, Gauge
 
-allocation_exits_counter = Counter('nomad_allocation_exits', 'Allocation events', ['jobname', 'groupname', 'taskname', 'exitcode'])
+allocation_exits_gauge = Gauge('nomad_allocation_exits', 'Allocation events', ['jobname', 'groupname', 'taskname', 'exitcode'])
 allocation_restarts = Gauge('nomad_allocation_restarts', 'Number of allocations restarts', ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'])
 deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['jobname', 'jobid', 'jobversion', 'status'])
 jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['jobname', 'jobtype', 'jobstatus', 'taskgroup'])
@@ -73,13 +74,16 @@ def get_allocs(nomad_connection):
         eval_id = alloc['EvalID']
 
         for task in alloc['TaskStates']:
+            event_counter = defaultdict(int)
             for event in alloc['TaskStates'][task]['Events']:
-                allocation_exits_counter.labels(
+                event_counter[event['ExitCode']] += 1
+            for rc in event_counter:
+                allocation_exits_gauge.labels(
                     jobname=jobname,
                     groupname=groupname,
                     taskname=task,
-                    exitcode=str(event['ExitCode']),
-                ).inc()
+                    exitcode=rc,
+                ).set(event_counter[rc])
             allocation_restarts.labels(
                 jobname=jobname,
                 groupname=groupname,
