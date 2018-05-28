@@ -6,7 +6,7 @@ from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from prometheus_client import core, generate_latest, Gauge
 
-allocation_exits_gauge = Gauge('nomad_allocation_exits', 'Allocation events', ['jobname', 'groupname', 'taskname', 'exitcode'])
+allocation_exits_gauge = Gauge('nomad_allocation_exits', 'Allocation events', ['jobname', 'groupname', 'taskname', 'exitcode', 'alloc_id'])
 allocation_restarts = Gauge('nomad_allocation_restarts', 'Number of allocations restarts', ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'])
 deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['jobname', 'jobid', 'jobversion', 'status'])
 jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['jobname', 'jobtype', 'jobstatus', 'taskgroup'])
@@ -82,6 +82,7 @@ def get_allocs(nomad_connection):
                     jobname=jobname,
                     groupname=groupname,
                     taskname=task,
+                    alloc_id=alloc_id,
                     exitcode=rc,
                 ).set(event_counter[rc])
             allocation_restarts.labels(
