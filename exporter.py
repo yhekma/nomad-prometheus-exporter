@@ -6,10 +6,10 @@ from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from prometheus_client import core, generate_latest, Gauge
 
-allocation_exits_gauge = Gauge('nomad_allocation_exits', 'Allocation events', ['jobname', 'groupname', 'taskname', 'exitcode', 'alloc_id'])
-allocation_restarts = Gauge('nomad_allocation_restarts', 'Number of allocations restarts', ['jobname', 'groupname', 'taskname', 'alloc_id', 'eval_id'])
-deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['jobname', 'jobid', 'jobversion', 'status'])
-jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['jobname', 'jobtype', 'jobstatus', 'taskgroup'])
+allocation_exits_gauge = Gauge('nomad_allocation_exits', 'Allocation events', ['job', 'taskgroup', 'task', 'exitcode', 'alloc_id'])
+allocation_restarts = Gauge('nomad_allocation_restarts', 'Number of allocations restarts', ['job', 'taskgroup', 'task', 'alloc_id', 'eval_id'])
+deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['job', 'jobid', 'jobversion', 'status'])
+jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['job', 'jobtype', 'jobstatus', 'taskgroup'])
 
 
 class ExportRequestHandler(BaseHTTPRequestHandler):
@@ -40,7 +40,7 @@ def get_jobs(nomad_connection):
         for taskgroup in job['JobSummary']['Summary']:
             for status in job['JobSummary']['Summary'][taskgroup]:
                 jobs_gauge.labels(
-                    jobname=jobname,
+                    job=jobname,
                     jobtype=jobtype,
                     jobstatus=status,
                     taskgroup=taskgroup,
@@ -59,7 +59,7 @@ def get_deployments(nomad_connection):
 
     for deployment in deployments:
         deployments_gauge.labels(
-            jobname=deployment['JobID'],
+            job=deployment['JobID'],
             jobid=deployment['ID'],
             jobversion=deployment['JobVersion'],
             status=deployment['Status'],
@@ -69,29 +69,29 @@ def get_deployments(nomad_connection):
 def get_allocs(nomad_connection):
     for alloc in nomad_connection.allocations:
         jobname = alloc['JobID']
-        groupname = alloc['TaskGroup']
+        taskgroup = alloc['TaskGroup']
         alloc_id = alloc['ID']
         eval_id = alloc['EvalID']
 
-        for task in alloc['TaskStates']:
+        for t in alloc['TaskStates']:
             event_counter = defaultdict(int)
-            for event in alloc['TaskStates'][task]['Events']:
+            for event in alloc['TaskStates'][t]['Events']:
                 event_counter[event['ExitCode']] += 1
             for rc in event_counter:
                 allocation_exits_gauge.labels(
-                    jobname=jobname,
-                    groupname=groupname,
-                    taskname=task,
+                    job=jobname,
+                    taskgroup=taskgroup,
+                    task=t,
                     alloc_id=alloc_id,
                     exitcode=rc,
                 ).set(event_counter[rc])
             allocation_restarts.labels(
-                jobname=jobname,
-                groupname=groupname,
-                taskname=task,
+                job=jobname,
+                taskgroup=taskgroup,
+                task=t,
                 alloc_id=alloc_id,
                 eval_id=eval_id,
-            ).set(alloc['TaskStates'][task]['Restarts'])
+            ).set(alloc['TaskStates'][t]['Restarts'])
 
 
 if __name__ == '__main__':
