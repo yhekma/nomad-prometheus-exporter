@@ -10,9 +10,9 @@ Exposes allocations on `/metrics`
 
 See the example nomad file.
 
-For example, if you want to see which allocs restarted in the last 5 minutes (assuming they were not collected by GC):
+For example, if you want to see which allocs died with non-zero exit codes in the last 5 minutes:
 
-```sum(delta(nomad_allocation_restarts[5m])) by (jobname, taskname) > 0```
+```sum by(job, taskgroup, task, dc, alloc_id) (delta(nomad_allocation_exits{exitcode!="0"}[5m]))```
 
 to see the deployments in the last 10 minutes (assuming they were not collected by GC)
 
