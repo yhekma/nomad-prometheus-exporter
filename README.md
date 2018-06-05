@@ -8,7 +8,7 @@ uses environment variables to get its config:
 
 Exposes allocations on `/metrics`
 
-See the example nomad file.
+Note that if jobs dissapear (or get renamed), it will keep it's metrics of the old job names. In that case the exporter needs to be stopped and started.
 
 For example, if you want to see which allocs died with non-zero exit codes in the last 5 minutes:
 
