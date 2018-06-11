@@ -52,14 +52,10 @@ def get_jobs(nomad_connection):
 
 
 def get_deployments(nomad_connection):
-    count_dict = {}
+    count_dict = defaultdict(int)
     deployments = list(nomad_connection.deployments)
     for deployment in deployments:
-        jobname = deployment['JobID']
-        try:
-            count_dict[jobname] += 1
-        except KeyError:
-            count_dict[jobname] = 1
+        count_dict[deployment['JobID']] += 1
 
     for deployment in deployments:
         deployments_gauge.labels(
