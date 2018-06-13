@@ -38,17 +38,18 @@ def get_jobs(nomad_connection):
         jobname = job['Name']
         jobtype = job['Type']
         taskgroups = job['JobSummary']['Summary']
-        for taskgroup in taskgroups:
-            # Get rid of tasks that have no numbers assigned at all
-            if sum([int(i) for i in taskgroups[taskgroup].values()]) == 0:
+        for taskgroupname in taskgroups:
+            taskgroup = taskgroups[taskgroupname]
+            # Get rid of tasks that have only numbers "Complete"
+            if sum([int(taskgroup[i]) for i in taskgroup if not i == 'Complete']) == 0:
                 continue
-            for status in taskgroups[taskgroup]:
+            for status in taskgroup:
                 jobs_gauge.labels(
                     job=jobname,
                     jobtype=jobtype,
                     jobstatus=status,
-                    taskgroup=taskgroup,
-                ).set(taskgroups[taskgroup][status])
+                    taskgroup=taskgroupname,
+                ).set(taskgroup[status])
 
 
 def get_deployments(nomad_connection):
