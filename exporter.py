@@ -9,6 +9,8 @@ from prometheus_client import core, generate_latest, Gauge
 allocation_exits_gauge = Gauge('nomad_allocation_exits', 'Allocation events', ['job', 'taskgroup', 'task', 'exitcode', 'alloc_id'])
 allocation_restarts = Gauge('nomad_allocation_restarts', 'Number of allocations restarts', ['job', 'taskgroup', 'task', 'alloc_id', 'eval_id'])
 deployments_gauge = Gauge('nomad_deployments', 'Nomad deployments', ['job', 'jobid', 'jobversion', 'status'])
+allocated_cpu_gauge = Gauge('nomad_allocated_cpu', 'Nomad allocated cpu', ['job', 'taskgroup', 'task', 'alloc_id'])
+allocated_memory_gauge = Gauge('nomad_allocated_memory', 'Nomad allocated memory', ['job', 'taskgroup', 'task', 'alloc_id'])
 jobs_gauge = Gauge('nomad_job_status', 'Status of nomad jobs', ['job', 'jobtype', 'jobstatus', 'taskgroup'])
 
 
@@ -21,6 +23,7 @@ class ExportRequestHandler(BaseHTTPRequestHandler):
             get_allocs(n)
             get_deployments(n)
             get_jobs(n)
+            get_resources(n)
             stats = generate_latest(core.REGISTRY)
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
@@ -31,6 +34,26 @@ class ExportRequestHandler(BaseHTTPRequestHandler):
 def start_server(port=os.environ.get('PORT', 8888)):
     httpd = HTTPServer(('', int(port)), ExportRequestHandler)
     httpd.serve_forever()
+
+
+def get_resources(nomad_connection):
+    for alloc in nomad_connection.allocations:
+        alloc_data = nomad_connection.allocation.get_allocation(alloc['ID'])
+        jobname = alloc_data['Job']['Name']
+        for taskgroup in alloc_data['Job']['TaskGroups']:
+            for task in taskgroup['Tasks']:
+                allocated_cpu_gauge.labels(
+                    job=jobname,
+                    taskgroup=taskgroup['Name'],
+                    task=task['Name'],
+                    alloc_id=alloc['ID'],
+                ).set(task['Resources']['CPU'])
+                allocated_memory_gauge.labels(
+                    job=jobname,
+                    taskgroup=taskgroup['Name'],
+                    task=task['Name'],
+                    alloc_id=alloc['ID'],
+                ).set(task['Resources']['MemoryMB'])
 
 
 def get_jobs(nomad_connection):
